@@ -1,103 +1,232 @@
-// Corrected motor control pins (based on wiring image)
-const int rightMotorPin1 = 8;  // IN3
-const int rightMotorPin2 = 9;  // IN4
-const int leftMotorPin1  = 10; // IN1
-const int leftMotorPin2  = 11; // IN2
+// === Pin Definitions ===
+// IR Sensors
+const int IR_RIGHT = 2;
+const int IR_LEFT = 5;
 
-// Ultrasonic Sensor 1
-const int trigPin1 = 4;
-const int echoPin1 = 3;
+// Ultrasonic Right
+const int US_TRIG_R = 3;
+const int US_ECHO_R = 4;
 
-// Ultrasonic Sensor 2
-const int trigPin2 = 5;
-const int echoPin2 = 6;
+// Ultrasonic Left
+const int US_ECHO_L = 6;
+const int US_TRIG_L = 7;
 
-// IR sensors
-const int irSensorPin = 12;
-const int irSensorPin2 = 13;
+// Motor Driver - Right
+const int ENB = 8;
+const int IN4 = 9;
+const int IN3 = 10;
 
-long duration1, distance1;
-long duration2, distance2;
+// Motor Driver - Left
+const int IN2 = 11;
+const int IN1 = 12;
+const int ENA = 13;
 
+// === State Machine States ===
+enum State {
+  INIT,
+  FOLLOW_LINE,
+  AVOID_OBSTACLE,
+  LOST_LINE,
+};
+State currentState = INIT;
+
+// === Motor Control Parameters ===
+int baseSpeed = 140;     // PWM speed for straight
+int turnSpeed = 90;      // PWM speed for turning
+int reverseSpeed = 100;  // for recovery
+int obstacleThreshold = 20; // cm
+
+// === Line Tracking ===
+bool lastSeenLeft = false;
+bool lastSeenRight = false;
+
+// === Setup ===
 void setup() {
-  // Motor pins
-  pinMode(rightMotorPin1, OUTPUT);
-  pinMode(rightMotorPin2, OUTPUT);
-  pinMode(leftMotorPin1, OUTPUT);
-  pinMode(leftMotorPin2, OUTPUT);
-
-  // Ultrasonic sensors
-  pinMode(trigPin1, OUTPUT);
-  pinMode(echoPin1, INPUT);
-  pinMode(trigPin2, OUTPUT);
-  pinMode(echoPin2, INPUT);
-
-  // IR sensors
-  pinMode(irSensorPin, INPUT);
-  pinMode(irSensorPin2, INPUT);
-
   Serial.begin(9600);
+
+  // IR
+  pinMode(IR_RIGHT, INPUT);
+  pinMode(IR_LEFT, INPUT);
+
+  // Ultrasonic
+  pinMode(US_TRIG_R, OUTPUT);
+  pinMode(US_ECHO_R, INPUT);
+  pinMode(US_TRIG_L, OUTPUT);
+  pinMode(US_ECHO_L, INPUT);
+
+  // Motors
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  stopMotors();
 }
 
+// === Main Loop ===
 void loop() {
-  int lineState = digitalRead(irSensorPin);
-  int lineState1 = digitalRead(irSensorPin2);
+  switch (currentState) {
+    case INIT:
+      delay(3000); // wait and observe
+      currentState = FOLLOW_LINE;
+      break;
 
-  // Read Ultrasonic Sensor 1
-  digitalWrite(trigPin1, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin1, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin1, LOW);
-  duration1 = pulseIn(echoPin1, HIGH);
-  distance1 = duration1 * 0.034 / 2;
+    case FOLLOW_LINE:
+      followLineLogic();
+      break;
 
-  // Read Ultrasonic Sensor 2
-  digitalWrite(trigPin2, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin2, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin2, LOW);
-  duration2 = pulseIn(echoPin2, HIGH);
-  distance2 = duration2 * 0.034 / 2;
+    case AVOID_OBSTACLE:
+      avoidObstacle();
+      currentState = FOLLOW_LINE;
+      break;
 
-  Serial.print("Dist1: "); Serial.print(distance1);
-  Serial.print(" cm | Dist2: "); Serial.print(distance2);
-  Serial.print(" cm | IR: "); Serial.print(lineState);
-  Serial.print(", "); Serial.println(lineState1);
-
-  // Obstacle Avoidance
-  if (distance1 < 20 || distance2 < 20) {
-    stopMotors();
-  } else {
-    if (lineState == LOW || lineState1 == LOW) {
-      moveForward();
-    } else {
-      searchForLine();
-    }
+    case LOST_LINE:
+      recoverLine();
+      break;
   }
 }
 
-void moveForward() {
-  // REVERSED: Now both motors spin forward correctly
-  digitalWrite(rightMotorPin1, LOW);
-  digitalWrite(rightMotorPin2, HIGH);
-  digitalWrite(leftMotorPin1, LOW);
-  digitalWrite(leftMotorPin2, HIGH);
+// === Sensor Functions ===
+bool isLineLeft() {
+  return digitalRead(IR_LEFT) == LOW; // Black line
+}
+
+bool isLineRight() {
+  return digitalRead(IR_RIGHT) == LOW; // Black line
+}
+
+long readUltrasonic(int trigPin, int echoPin) {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  return pulseIn(echoPin, HIGH) * 0.034 / 2; // in cm
+}
+
+// === Motor Control Functions ===
+void drive(int leftSpeed, int rightSpeed) {
+  // Left motor
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  analogWrite(ENA, leftSpeed);
+
+  // Right motor
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENB, rightSpeed);
 }
 
 void stopMotors() {
-  digitalWrite(rightMotorPin1, LOW);
-  digitalWrite(rightMotorPin2, LOW);
-  digitalWrite(leftMotorPin1, LOW);
-  digitalWrite(leftMotorPin2, LOW);
+  analogWrite(ENA, 0);
+  analogWrite(ENB, 0);
 }
 
-void searchForLine() {
-  // REVERSED: Now rotates in the opposite direction to search
-  digitalWrite(rightMotorPin1, HIGH);
-  digitalWrite(rightMotorPin2, LOW);
-  digitalWrite(leftMotorPin1, HIGH);
-  digitalWrite(leftMotorPin2, LOW);
+void turnLeft() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENA, turnSpeed);
+  analogWrite(ENB, turnSpeed);
+}
+
+void turnRight() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  analogWrite(ENA, turnSpeed);
+  analogWrite(ENB, turnSpeed);
+}
+
+void reverse() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  analogWrite(ENA, reverseSpeed);
+  analogWrite(ENB, reverseSpeed);
+}
+
+// === Line Following Logic ===
+void followLineLogic() {
+  bool left = isLineLeft();
+  bool right = isLineRight();
+  long frontLeft = readUltrasonic(US_TRIG_L, US_ECHO_L);
+  long frontRight = readUltrasonic(US_TRIG_R, US_ECHO_R);
+
+  if (frontLeft < obstacleThreshold || frontRight < obstacleThreshold) {
+    stopMotors();
+    currentState = AVOID_OBSTACLE;
+    return;
+  }
+
+  if (left && right) {
+    drive(baseSpeed, baseSpeed);  // Go straight
+    lastSeenLeft = true;
+    lastSeenRight = true;
+  } else if (left) {
+    drive(turnSpeed, baseSpeed);  // Veer left
+    lastSeenLeft = true;
+    lastSeenRight = false;
+  } else if (right) {
+    drive(baseSpeed, turnSpeed);  // Veer right
+    lastSeenLeft = false;
+    lastSeenRight = true;
+  } else {
+    stopMotors();
+    currentState = LOST_LINE;
+  }
+}
+
+// === Obstacle Avoidance ===
+void avoidObstacle() {
+  stopMotors();
+  delay(200);
+  reverse();
   delay(500);
+  stopMotors();
+
+  // Turn away from obstacle
+  if (readUltrasonic(US_TRIG_R, US_ECHO_R) < obstacleThreshold) {
+    turnLeft();
+  } else {
+    turnRight();
+  }
+  delay(600);
+
+  // Drive forward to bypass
+  drive(baseSpeed, baseSpeed);
+  delay(800);
+
+  // Try to reacquire line
+  currentState = LOST_LINE;
+}
+
+// === Line Recovery ===
+void recoverLine() {
+  stopMotors();
+  delay(100);
+
+  if (lastSeenLeft) {
+    turnLeft();
+    delay(400);
+  } else if (lastSeenRight) {
+    turnRight();
+    delay(400);
+  } else {
+    turnLeft();
+    delay(400);
+    turnRight();
+    delay(800);
+    turnLeft();
+    delay(400);
+  }
+
+  if (isLineLeft() || isLineRight()) {
+    currentState = FOLLOW_LINE;
+  }
 }
