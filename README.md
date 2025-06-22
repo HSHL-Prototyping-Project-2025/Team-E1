@@ -17,11 +17,11 @@ The vehicle is built around an **Arduino Uno** and uses the following key compon
 
 The repository is structured into the following folders:
 
-- [`3d models`](./3d%20models/): 3D printable files and CAD designs.
-- [`code`](./code/): Arduino source code for vehicle control.
-- [`diagrams`](./diagrams/): Circuit schematics and system diagrams.
-- [`multism`](./multism/): Circuit simulation files using Multisim.
-- [`tinkercad`](./tinkercad/): Tinkercad simulation links and supporting assets.
+- [`3d models`](./3d%20Models/): 3D printable files and CAD designs.
+- [`code`](./Code/): Arduino source code for vehicle control.
+- [`diagrams`](./Diagrams/): Circuit schematics and system diagrams.
+- [`multism`](./Multism/): Circuit simulation files using Multisim.
+- [`tinkercad`](./Tinkercad/): Tinkercad simulation links and supporting assets.
 
 Each folder contains its own README with more specific instructions, files, and relevant links.
 
