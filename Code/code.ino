@@ -1,260 +1,137 @@
-// === Pin Definitions ===
-#define IR_LEFT 5
-#define IR_RIGHT 2
+// Pin assignments
+const int leftIR = 5;
+const int rightIR = 2;
 
-#define TRIG_LEFT 7
-#define ECHO_LEFT 6
-#define TRIG_RIGHT 3
-#define ECHO_RIGHT 4
+const int trigRight = 3;
+const int echoRight = 4;
+const int echoLeft = 6;
+const int trigLeft = 7;
 
-#define ENA 13 // Left Motor Enable
-#define IN1 12
-#define IN2 11
+const int ENB = 8;
+const int IN4 = 9;
+const int IN3 = 10;
 
-#define ENB 8  // Right Motor Enable
-#define IN3 10
-#define IN4 9
+const int IN2 = 11;
+const int IN1 = 12;
+const int ENA = 13;
 
-// === State Definitions ===
-enum State {
-  INIT,
-  FOLLOW_LINE,
-  AVOID_OBSTACLE,
-  LOST_LINE
-};
+// Speeds
+const int forwardSpeed = 100;
+const int reverseSpeed = 60;
+const int turnMainSpeed = 90;
+const int turnSlowSpeed = 40;
 
-State currentState = INIT;
+const int obstacleDistance = 15;
 
-// === Speed Settings ===
-const int baseSpeed = 150;
-const int turnSpeed = 100;
-const int avoidSpeed = 120;
-
-// === Setup ===
 void setup() {
-  Serial.begin(9600);
+  pinMode(leftIR, INPUT);
+  pinMode(rightIR, INPUT);
 
-  pinMode(IR_LEFT, INPUT);
-  pinMode(IR_RIGHT, INPUT);
+  pinMode(trigLeft, OUTPUT);
+  pinMode(echoLeft, INPUT);
+  pinMode(trigRight, OUTPUT);
+  pinMode(echoRight, INPUT);
 
-  pinMode(TRIG_LEFT, OUTPUT);
-  pinMode(ECHO_LEFT, INPUT);
-  pinMode(TRIG_RIGHT, OUTPUT);
-  pinMode(ECHO_RIGHT, INPUT);
-
-  pinMode(ENA, OUTPUT);
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
-
-  pinMode(ENB, OUTPUT);
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
 
-  stopMotors();
-  delay(3000); // Wait 3s before starting
-  currentState = FOLLOW_LINE;
+  Serial.begin(9600);
 }
 
-// === Main Loop ===
-void loop() {
-  switch (currentState) {
-    case INIT:
-      stopMotors();
-      break;
-
-    case FOLLOW_LINE:
-      followLineLogic();
-      break;
-
-    case AVOID_OBSTACLE:
-      avoidObstacleLogic();
-      break;
-
-    case LOST_LINE:
-      recoverLine();
-      break;
-  }
-}
-
-// === Sensor Helpers ===
-bool isLineLeft() {
-  return digitalRead(IR_LEFT) == HIGH; // HIGH = black = line
-}
-
-bool isLineRight() {
-  return digitalRead(IR_RIGHT) == HIGH; // HIGH = black = line
-}
-
-long readUltrasonic(int trigPin, int echoPin) {
+long getDistance(int trigPin, int echoPin) {
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
+
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
+
   digitalWrite(trigPin, LOW);
-  long duration = pulseIn(echoPin, HIGH, 20000); // 20ms timeout
-  return duration * 0.034 / 2;
+  return pulseIn(echoPin, HIGH) * 0.034 / 2;
 }
 
-bool isObstacleDetected() {
-  long distL = readUltrasonic(TRIG_LEFT, ECHO_LEFT);
-  long distR = readUltrasonic(TRIG_RIGHT, ECHO_RIGHT);
-  return (distL > 0 && distL < 20) || (distR > 0 && distR < 20);
+bool isObstacle() {
+  long leftDist = getDistance(trigLeft, echoLeft);
+  long rightDist = getDistance(trigRight, echoRight);
+  return (leftDist < obstacleDistance || rightDist < obstacleDistance);
 }
 
-// === Line Following Logic ===
-void followLineLogic() {
-  bool left = isLineLeft();
-  bool right = isLineRight();
+void moveForward() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  analogWrite(ENA, forwardSpeed);
 
-  Serial.print("IR L: ");
-  Serial.print(left);
-  Serial.print(" | IR R: ");
-  Serial.println(right);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  analogWrite(ENB, forwardSpeed);
+}
 
-  if (isObstacleDetected()) {
-    currentState = AVOID_OBSTACLE;
+void reverse() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  analogWrite(ENA, reverseSpeed);
+
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENB, reverseSpeed);
+}
+
+void stopCar() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  analogWrite(ENA, 0);
+
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENB, 0);
+}
+
+void turnRight() {
+  // Left wheel fast, right wheel slow
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  analogWrite(ENA, turnMainSpeed);
+
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  analogWrite(ENB, turnSlowSpeed);
+}
+
+void turnLeft() {
+  // Right wheel fast, left wheel slow
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  analogWrite(ENA, turnSlowSpeed);
+
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  analogWrite(ENB, turnMainSpeed);
+}
+
+void loop() {
+  if (isObstacle()) {
+    stopCar();
     return;
   }
 
-  if (left && right) {
-    moveForward(baseSpeed);
-  } else if (left && !right) {
-    turnLeft(turnSpeed);
-  } else if (!left && right) {
-    turnRight(turnSpeed);
-  } else {
-    stopMotors();
-    currentState = LOST_LINE;
-  }
-}
+  int leftValue = digitalRead(leftIR);
+  int rightValue = digitalRead(rightIR);
 
-// === Obstacle Avoidance ===
-void avoidObstacleLogic() {
-  Serial.println("Avoiding Obstacle");
-
-  // Back up a bit
-  moveBackward(avoidSpeed);
-  delay(500);
-
-  // Turn right to avoid
-  turnRight(avoidSpeed);
-  delay(600);
-
-  // Go forward to bypass
-  moveForward(avoidSpeed);
-  delay(1000);
-
-  // Turn back to left
-  turnLeft(avoidSpeed);
-  delay(600);
-
-  // Resume forward
-  moveForward(baseSpeed);
-  delay(500);
-
-  currentState = FOLLOW_LINE;
-}
-
-// === Line Recovery ===
-void recoverLine() {
-  Serial.println("Recovering Line");
-
-  int spinSpeed = 100;
-  bool found = false;
-
-  // Spin right to search
-  for (int i = 0; i < 15; i++) {
-    spinRight(spinSpeed);
-    if (isLineLeft() || isLineRight()) {
-      found = true;
-      break;
-    }
-    delay(100);
+  if (leftValue == 1 && rightValue == 1) {
+    moveForward();
+  } 
+  else if (leftValue == 0 && rightValue == 1) {
+    turnRight();
+  } 
+  else if (leftValue == 1 && rightValue == 0) {
+    turnLeft();
+  } 
+  else {
+    reverse();
   }
 
-  if (!found) {
-    // Spin left to search
-    for (int i = 0; i < 15; i++) {
-      spinLeft(spinSpeed);
-      if (isLineLeft() || isLineRight()) {
-        found = true;
-        break;
-      }
-      delay(100);
-    }
-  }
-
-  if (found) {
-    Serial.println("Line Recovered");
-    stopMotors();
-    delay(200);
-    currentState = FOLLOW_LINE;
-  } else {
-    Serial.println("Still Lost");
-    stopMotors();
-  }
-}
-
-// === Movement Commands ===
-void moveForward(int speed) {
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
-  analogWrite(ENA, speed);
-  analogWrite(ENB, speed);
-}
-
-void moveBackward(int speed) {
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
-  analogWrite(ENA, speed);
-  analogWrite(ENB, speed);
-}
-
-void turnLeft(int speed) {
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
-  analogWrite(ENA, speed);
-  analogWrite(ENB, speed);
-}
-
-void turnRight(int speed) {
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
-  analogWrite(ENA, speed);
-  analogWrite(ENB, speed);
-}
-
-void spinLeft(int speed) {
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
-  analogWrite(ENA, speed);
-  analogWrite(ENB, speed);
-}
-
-void spinRight(int speed) {
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
-  analogWrite(ENA, speed);
-  analogWrite(ENB, speed);
-}
-
-void stopMotors() {
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, LOW);
-  analogWrite(ENA, 0);
-  analogWrite(ENB, 0);
+  delay(15);
 }
