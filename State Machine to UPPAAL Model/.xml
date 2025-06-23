@@ -1,0 +1,8 @@
+Autonomous Line Following vehicle State Machine - UPPAAL Model
+
+5-state line-following vehicle with obstacle avoidance.
+
+## States
+INITIALIZING → FOLLOWING → DETECTING_OBSTACLES → OBSTACLE_REMOVED → FOLLOWING
+
+EMERGENCY_STOP can interrupt any state.
