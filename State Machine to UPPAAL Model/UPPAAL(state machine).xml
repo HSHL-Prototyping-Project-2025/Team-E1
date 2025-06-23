@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>// Simple Robot Variables
+clock time;
+bool ready = false;
+bool obstacle_found = false;
+bool obstacle_clear = false;
+bool emergency = false;</declaration>
+	<template>
+		<name x="5" y="5">Autonomous Vehicle</name>
+		<location id="id0" x="-300" y="0">
+			<name x="-350" y="-30">INITIALIZING</name>
+		</location>
+		<location id="id1" x="-100" y="0">
+			<name x="-150" y="-30">FOLLOWING</name>
+		</location>
+		<location id="id2" x="100" y="0">
+			<name x="50" y="-30">DETECTING_OBSTACLES</name>
+		</location>
+		<location id="id3" x="300" y="0">
+			<name x="250" y="-30">OBSTACLE_REMOVED</name>
+		</location>
+		<location id="id4" x="0" y="150">
+			<name x="-50" y="180">EMERGENCY_STOP</name>
+		</location>
+		<init ref="id0"/>
+		<transition id="id5">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-250" y="-20">ready</label>
+			<label kind="assignment" x="-250" y="0">time := 0</label>
+		</transition>
+		<transition id="id6">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-50" y="-20">time &gt; 8</label>
+			<label kind="assignment" x="-50" y="0">time := 0</label>
+		</transition>
+		<transition id="id7">
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-50" y="40">!obstacle_found</label>
+			<label kind="assignment" x="-50" y="60">time := 0</label>
+			<nail x="100" y="50"/>
+			<nail x="-100" y="50"/>
+		</transition>
+		<transition id="id8">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="150" y="-20">obstacle_found</label>
+			<label kind="assignment" x="150" y="0">time := 0</label>
+		</transition>
+		<transition id="id9">
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="guard" x="153" y="76">obstacle_clear</label>
+			<label kind="assignment" x="102" y="102">time := 0</label>
+			<nail x="300" y="50"/>
+			<nail x="-100" y="50"/>
+		</transition>
+		<transition id="id10">
+			<source ref="id1"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-150" y="70">emergency</label>
+		</transition>
+		<transition id="id11">
+			<source ref="id2"/>
+			<target ref="id4"/>
+			<label kind="guard" x="17" y="93">emergency</label>
+		</transition>
+		<transition id="id12">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="51" y="127">emergency</label>
+		</transition>
+		<transition id="id13">
+			<source ref="id4"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-100" y="200">!emergency</label>
+			<label kind="assignment" x="-100" y="220">time := 0</label>
+		</transition>
+	</template>
+	<system>
+system Robot;
+</system>
+	<queries>
+		<query>
+			<formula>A[] not deadlock</formula>
+			<comment>No deadlocks</comment>
+		</query>
+		<query>
+			<formula>A&lt;&gt; Robot.FOLLOWING</formula>
+			<comment>Always returns to following</comment>
+		</query>
+	</queries>
+</nta>
