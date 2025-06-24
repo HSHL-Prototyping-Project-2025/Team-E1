@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>
+		// Global declarations
+		clock time;
+		bool system_ready = false;
+		bool black_line_detected = false;
+		bool obstacle_detected = false;
+		bool remove_object = false;
+		bool path_clear = false;
+		bool object_avoided = false;
+		bool continue_navigation = false;
+		bool parking_command = false;
+		bool error_found = false;
+		bool vehicle_parked = false;
+	</declaration>
+	
+	<template>
+		<name>LineFollowingVehicle</name>
+		<declaration>
+			// Local declarations for the automaton
+		</declaration>
+		
+		<location id="id0" x="-510" y="-204">
+			<name x="-595" y="-238">SYSTEM_INITIALIZATION</name>
+		</location>
+		
+		<location id="id1" x="-255" y="-204">
+			<name x="-365" y="-238">COLOR_DETECTION_ROUTE_PLANNING</name>
+		</location>
+		
+		<location id="id2" x="68" y="-68">
+			<name x="-42" y="-102">LINE_FOLLOWING_SPEED_OPTIMIZATION</name>
+		</location>
+		
+		<location id="id3" x="408" y="-68">
+			<name x="348" y="-102">OBSTACLE_DETECTION</name>
+		</location>
+		
+		<location id="id4" x="408" y="136">
+			<name x="348" y="102">OBJECT_REMOVAL</name>
+		</location>
+		
+		<location id="id5" x="68" y="136">
+			<name x="8" y="102">AVOIDANCE_MANEUVER</name>
+		</location>
+		
+		<location id="id6" x="-255" y="136">
+			<name x="-315" y="102">ROUTE_NAVIGATION</name>
+		</location>
+		
+		<location id="id7" x="-510" y="136">
+			<name x="-570" y="102">PARKING</name>
+		</location>
+		
+		<location id="id8" x="-510" y="340">
+			<name x="-595" y="306">EMERGENCY_STOP</name>
+		</location>
+		
+		<location id="id9" x="-255" y="340">
+			<name x="-340" y="306">SYSTEM_POWER_OFF</name>
+		</location>
+		
+		<init ref="id0"/>
+		
+		<!-- Transitions -->
+		
+		<!-- System Initialization -> Color Detection -->
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-425" y="-221">system_ready</label>
+			<label kind="assignment" x="-425" y="-204">time = 0</label>
+		</transition>
+		
+		<!-- Color Detection -> Line Following -->
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-127" y="-153">black_line_detected</label>
+			<label kind="assignment" x="-127" y="-136">time = 0</label>
+			<nail x="-94" y="-136"/>
+		</transition>
+		
+		<!-- Line Following -> Obstacle Detection -->
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="221" y="-85">obstacle_detected</label>
+			<label kind="assignment" x="221" y="-68">time = 0</label>
+		</transition>
+		
+		<!-- Obstacle Detection -> Object Removal -->
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="425" y="17">remove_object</label>
+			<label kind="assignment" x="425" y="34">time = 0</label>
+		</transition>
+		
+		<!-- Object Removal -> Line Following -->
+		<transition>
+			<source ref="id4"/>
+			<target ref="id2"/>
+			<label kind="guard" x="221" y="85">path_clear</label>
+			<label kind="assignment" x="221" y="102">time = 0</label>
+			<nail x="238" y="136"/>
+			<nail x="238" y="-68"/>
+		</transition>
+		
+		<!-- Line Following -> Avoidance Maneuver -->
+		<transition>
+			<source ref="id2"/>
+			<target ref="id5"/>
+			<label kind="guard" x="85" y="17">object_avoided</label>
+			<label kind="assignment" x="85" y="34">time = 0</label>
+		</transition>
+		
+		<!-- Avoidance Maneuver -> Line Following -->
+		<transition>
+			<source ref="id5"/>
+			<target ref="id2"/>
+			<label kind="guard" x="85" y="51">path_clear</label>
+			<label kind="assignment" x="85" y="68">time = 0</label>
+		</transition>
+		
+		<!-- Line Following -> Route Navigation -->
+		<transition>
+			<source ref="id2"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-127" y="17">continue_navigation</label>
+			<label kind="assignment" x="-127" y="34">time = 0</label>
+			<nail x="-94" y="34"/>
+		</transition>
+		
+		<!-- Route Navigation -> Line Following -->
+		<transition>
+			<source ref="id6"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-127" y="51">path_clear</label>
+			<label kind="assignment" x="-127" y="68">time = 0</label>
+			<nail x="-94" y="68"/>
+		</transition>
+		
+		<!-- Route Navigation -> Parking -->
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-408" y="119">parking_command</label>
+			<label kind="assignment" x="-408" y="136">time = 0</label>
+		</transition>
+		
+		<!-- Parking -> Emergency Stop -->
+		<transition>
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-527" y="221">error_found</label>
+			<label kind="assignment" x="-527" y="238">time = 0</label>
+		</transition>
+		
+		<!-- Emergency Stop -> System Power Off -->
+		<transition>
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-408" y="323">vehicle_parked</label>
+			<label kind="assignment" x="-408" y="340">time = 0</label>
+		</transition>
+		
+		<!-- Parking -> System Power Off (direct) -->
+		<transition>
+			<source ref="id7"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-408" y="221">vehicle_parked</label>
+			<label kind="assignment" x="-408" y="238">time = 0</label>
+			<nail x="-382" y="238"/>
+		</transition>
+		
+	</template>
+	
+	<system>
+		// System instantiation
+		Vehicle = LineFollowingVehicle();
+		
+		// System composition
+		system Vehicle;
+	</system>
+	
+	<queries>
+		<query>
+			<formula>A[] not deadlock</formula>
+			<comment>The system should never deadlock</comment>
+		</query>
+		
+		<query>
+			<formula>E&lt;&gt; Vehicle.SYSTEM_POWER_OFF</formula>
+			<comment>The system should eventually be able to power off</comment>
+		</query>
+		
+		<query>
+			<formula>A[] Vehicle.EMERGENCY_STOP imply (vehicle_parked --&gt; Vehicle.SYSTEM_POWER_OFF)</formula>
+			<comment>From emergency stop, when vehicle is parked, system should power off</comment>
+		</query>
+		
+		<query>
+			<formula>E&lt;&gt; Vehicle.LINE_FOLLOWING_SPEED_OPTIMIZATION</formula>
+			<comment>It should be possible to reach the line following state</comment>
+		</query>
+		
+		<query>
+			<formula>A[] (Vehicle.OBSTACLE_DETECTION and remove_object) imply (Vehicle.OBJECT_REMOVAL)</formula>
+			<comment>If object removal is needed during detection, vehicle should handle it</comment>
+		</query>
+		
+		<query>
+			<formula>A[] Vehicle.PARKING imply (error_found --&gt; Vehicle.EMERGENCY_STOP)</formula>
+			<comment>If error occurs during parking, vehicle should enter emergency stop</comment>
+		</query>
+		
+		<query>
+			<formula>A[] (Vehicle.OBJECT_REMOVAL and path_clear) imply (Vehicle.LINE_FOLLOWING_SPEED_OPTIMIZATION)</formula>
+			<comment>After object removal and path clear, vehicle should return to line following</comment>
+		</query>
+		
+		<query>
+			<formula>A[] (Vehicle.AVOIDANCE_MANEUVER and path_clear) imply (Vehicle.LINE_FOLLOWING_SPEED_OPTIMIZATION)</formula>
+			<comment>After avoidance maneuver and path clear, vehicle should return to line following</comment>
+		</query>
+		
+		<query>
+			<formula>A[] Vehicle.ROUTE_NAVIGATION imply (parking_command --&gt; Vehicle.PARKING)</formula>
+			<comment>During navigation, parking command should lead to parking state</comment>
+		</query>
+		
+		<query>
+			<formula>A[] (Vehicle.COLOR_DETECTION_ROUTE_PLANNING and black_line_detected) imply (Vehicle.LINE_FOLLOWING_SPEED_OPTIMIZATION)</formula>
+			<comment>After line detection, vehicle should start following</comment>
+		</query>
+		
+	</queries>
+	
+</nta>
