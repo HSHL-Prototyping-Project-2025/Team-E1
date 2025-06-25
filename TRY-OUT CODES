@@ -1,0 +1,149 @@
+// --- Pin Definitions ---
+// IR Sensors
+const int leftIR = 5;
+const int rightIR = 2;
+
+// Ultrasonic Sensors (Obstacle Detection) – optional
+const int trigRight = 3;
+const int echoRight = 4;
+const int echoLeft = 6;
+const int trigLeft = 7;
+
+// Motor Driver Pins
+const int ENB = 8;   // Right Motor Speed Control
+const int IN4 = 9;   // Right Motor Direction
+const int IN3 = 10;  // Right Motor Direction
+const int IN2 = 11;  // Left Motor Direction
+const int IN1 = 12;  // Left Motor Direction
+const int ENA = 13;  // Left Motor Speed Control
+
+// Speed settings
+const int baseSpeed = 90;
+const int turnSpeed = 70;
+
+// Memory for last known direction
+String lastSeen = "center";
+
+void setup() {
+  // IR Sensors
+  pinMode(leftIR, INPUT);
+  pinMode(rightIR, INPUT);
+
+  // Ultrasonic sensors (not used, but set pins)
+  pinMode(trigLeft, OUTPUT);
+  pinMode(echoLeft, INPUT);
+  pinMode(trigRight, OUTPUT);
+  pinMode(echoRight, INPUT);
+
+  // Motors
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+
+  Serial.begin(9600);
+}
+
+void setMotor(int leftSpeed, int rightSpeed) {
+  // Clamp values
+  leftSpeed = constrain(leftSpeed, -255, 255);
+  rightSpeed = constrain(rightSpeed, -255, 255);
+
+  // Left motor
+  if (leftSpeed >= 0) {
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+  } else {
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+    leftSpeed = -leftSpeed;
+  }
+  analogWrite(ENA, leftSpeed);
+
+  // Right motor
+  if (rightSpeed >= 0) {
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+  } else {
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+    rightSpeed = -rightSpeed;
+  }
+  analogWrite(ENB, rightSpeed);
+}
+
+void stopCar() {
+  analogWrite(ENA, 0);
+  analogWrite(ENB, 0);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
+
+void moveForward() {
+  setMotor(baseSpeed, baseSpeed);
+}
+
+void turnLeft() {
+  setMotor(turnSpeed, baseSpeed);
+}
+
+void turnRight() {
+  setMotor(baseSpeed, turnSpeed);
+}
+
+void recoverLine() {
+  Serial.println("Line lost, recovering...");
+  int attempts = 0;
+  bool found = false;
+
+  while (attempts < 30) {
+    int leftValue = digitalRead(leftIR);
+    int rightValue = digitalRead(rightIR);
+
+    if (leftValue == 1 || rightValue == 1) {
+      found = true;
+      Serial.println("Line recovered.");
+      break;
+    }
+
+    if (lastSeen == "left") {
+      setMotor(-70, 70);  // Spin left
+    } else if (lastSeen == "right") {
+      setMotor(70, -70);  // Spin right
+    } else {
+      setMotor(-70, 70);  // Default spin left
+    }
+
+    delay(100);
+    attempts++;
+  }
+
+  if (!found) {
+    stopCar();
+    Serial.println("Could not recover line.");
+  }
+}
+
+void loop() {
+  int leftValue = digitalRead(leftIR);
+  int rightValue = digitalRead(rightIR);
+
+  if (leftValue == 1 && rightValue == 1) {
+    moveForward();
+    lastSeen = "center";
+  } else if (leftValue == 1 && rightValue == 0) {
+    turnLeft();
+    lastSeen = "left";
+  } else if (leftValue == 0 && rightValue == 1) {
+    turnRight();
+    lastSeen = "right";
+  } else {
+    recoverLine();
+  }
+
+  delay(20);  // Small delay for stability
+}
