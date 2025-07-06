@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>
+    clock t;
+    bool system_ready, black_line_detected, obstacle_detected, object_avoided, path_clear;
+    bool continue_navigation, parking_command, error_found, vehicle_parked;
+    int obstacle_type;
+  </declaration>
+	<template>
+		<name>Autonomous Line Following Vehicle</name>
+		<declaration>
+      // local declarations (none)
+    </declaration>
+		<location id="id0" x="-34" y="0">
+			<name x="-64" y="-30">System_Initialization</name>
+		</location>
+		<location id="id1" x="221" y="0">
+			<name x="191" y="-30">Color_Detection_Route_Planning</name>
+		</location>
+		<location id="id2" x="500" y="0">
+			<name x="470" y="-30">Line_Following_Speed_Optimization</name>
+		</location>
+		<location id="id3" x="799" y="0">
+			<name x="769" y="-30">Obstacle_Detection</name>
+		</location>
+		<location id="id4" x="799" y="306">
+			<name x="769" y="276">Avoidance_Maneuver</name>
+		</location>
+		<location id="id5" x="1071" y="0">
+			<name x="1041" y="-30">Object_Removal</name>
+		</location>
+		<location id="id6" x="476" y="212">
+			<name x="446" y="182">Route_Navigation</name>
+		</location>
+		<location id="id7" x="250" y="300">
+			<name x="220" y="270">Parking</name>
+		</location>
+		<location id="id8" x="0" y="300">
+			<name x="-30" y="270">Emergency_Stop</name>
+		</location>
+		<location id="id9" x="0" y="450">
+			<name x="-30" y="420">Fault_State</name>
+		</location>
+		<location id="id10" x="250" y="450">
+			<name x="220" y="420">System_Power_Off</name>
+		</location>
+		<init ref="id0"/>
+		<transition id="id11">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="42" y="8">system_ready</label>
+			<label kind="assignment" x="68" y="25">t = 0</label>
+		</transition>
+		<transition id="id12">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="297" y="5">black_line_detected</label>
+			<label kind="assignment" x="297" y="25">t = 0</label>
+		</transition>
+		<transition id="id13">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="578" y="5">obstacle_detected</label>
+			<label kind="assignment" x="578" y="25">t = 0</label>
+		</transition>
+		<transition id="id14">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="841" y="127">obstacle_type == 1</label>
+			<label kind="assignment" x="858" y="144">t = 0</label>
+		</transition>
+		<transition id="id15">
+			<source ref="id3"/>
+			<target ref="id5"/>
+			<label kind="guard" x="858" y="8">obstacle_type == 2</label>
+			<label kind="assignment" x="910" y="34">t = 0</label>
+			<nail x="816" y="0"/>
+		</transition>
+		<transition id="id16">
+			<source ref="id4"/>
+			<target ref="id2"/>
+			<label kind="guard" x="586" y="76">object_avoided &amp;&amp; path_clear</label>
+			<label kind="assignment" x="620" y="102">t = 0</label>
+		</transition>
+		<transition id="id17">
+			<source ref="id2"/>
+			<target ref="id6"/>
+			<label kind="guard" x="212" y="93">continue_navigation &amp;&amp; path_clear</label>
+			<label kind="assignment" x="425" y="119">t = 0</label>
+		</transition>
+		<transition id="id18">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="323" y="272">parking_command</label>
+			<label kind="assignment" x="297" y="289">t = 0</label>
+		</transition>
+		<transition id="id19">
+			<source ref="id6"/>
+			<target ref="id8"/>
+			<label kind="guard" x="161" y="195">error_found</label>
+			<label kind="assignment" x="161" y="212">t = 0</label>
+		</transition>
+		<transition id="id20">
+			<source ref="id7"/>
+			<target ref="id10"/>
+			<label kind="guard" x="255" y="374">vehicle_parked</label>
+			<label kind="assignment" x="255" y="399">t = 0</label>
+		</transition>
+		<transition id="id21">
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="90" y="375">true</label>
+			<label kind="assignment" x="90" y="395">t = 0</label>
+		</transition>
+		<transition id="id22">
+			<source ref="id9"/>
+			<target ref="id10"/>
+		</transition>
+	</template>
+	<system>
+    // Instantiate and name the template
+    process line Following Autonomous Vehicle = lineFollowingAutonomousVehicle();
+    system LineFollowingAutonomousVehicle;
+  </system>
+	<queries>
+		<query>
+			<formula/>
+			<comment/>
+		</query>
+	</queries>
+</nta>
